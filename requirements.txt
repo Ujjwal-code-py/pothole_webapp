@@ -1,0 +1,9 @@
+Flask
+gunicorn
+ultralytics
+opencv-python-headless
+numpy
+Pillow
+cloudinary
+python-dotenv
+reportlab
