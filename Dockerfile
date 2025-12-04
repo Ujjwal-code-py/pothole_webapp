@@ -1,24 +1,32 @@
+# Use Python 3.10 (recommended for Torch CPU stability)
 FROM python:3.10-slim
 
-ENV PYTHONDONTWRITEBYTECODE=1
-ENV PYTHONUNBUFFERED=1
+# Prevent prompts
+ENV DEBIAN_FRONTEND=noninteractive
 
-WORKDIR /app
-
+# Install system dependencies (YOLO + OpenCV needs these)
 RUN apt-get update && apt-get install -y \
+    ffmpeg \
+    libsm6 \
+    libxext6 \
     libgl1 \
-    libglib2.0-0 \
-    build-essential \
-    curl \
     && rm -rf /var/lib/apt/lists/*
 
-COPY requirements.txt .
-RUN pip install --upgrade pip && \
-    pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu && \
-    pip install -r requirements.txt
+# Set app directory
+WORKDIR /app
 
+# Copy requirements first (better caching)
+COPY requirements.txt .
+
+# Upgrade pip + install dependencies
+RUN pip install --upgrade pip && \
+    pip install --no-cache-dir -r requirements.txt
+
+# Copy all app files
 COPY . .
 
+# Expose app port
 EXPOSE 8000
 
-CMD ["sh", "-c", "gunicorn -b 0.0.0.0:$PORT app:app"]
+# Run server
+CMD ["gunicorn", "--bind", "0.0.0.0:8000", "app:app"]
