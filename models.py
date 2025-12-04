@@ -9,7 +9,7 @@ class Location:
         try:
             query = '''
                 INSERT INTO locations (location_name, latitude, longitude, city, additional_notes)
-                VALUES (?, ?, ?, ?, ?)
+                VALUES (%s, %s, %s, %s, %s)
             '''
             values = (
                 location_data.get('location_name'),
@@ -18,9 +18,10 @@ class Location:
                 location_data.get('city'),
                 location_data.get('additional_notes')
             )
-            cursor.execute(query, values)
+            cursor.execute(query + " RETURNING location_id", values)
+            location_id = cursor.fetchone()[0]
             db.get_connection().commit()
-            return cursor.lastrowid
+            return location_id
         except Exception as e:
             print(f"❌ Location creation failed: {e}")
             db.get_connection().rollback()
@@ -36,7 +37,7 @@ class MediaFile:
             query = '''
                 INSERT INTO media_files (original_filename, file_type, original_file_url, 
                                        processed_file_url, file_size)
-                VALUES (?, ?, ?, ?, ?)
+                VALUES (%s, %s, %s,%s,%s)
             '''
             values = (
                 media_data.get('original_filename'),
@@ -45,9 +46,11 @@ class MediaFile:
                 media_data.get('processed_file_url'),
                 media_data.get('file_size')
             )
-            cursor.execute(query, values)
+            cursor.execute(query + " RETURNING media_id", values)
+            media_id = cursor.fetchone()[0]
             db.get_connection().commit()
-            return cursor.lastrowid
+            return media_id
+
         except Exception as e:
             print(f"❌ Media file creation failed: {e}")
             db.get_connection().rollback()
@@ -63,7 +66,8 @@ class PotholeAnalysis:
             query = '''
                 INSERT INTO pothole_analysis (location_id, media_id, total_potholes, 
                                             total_volume_liters, average_width_cm, average_depth_cm)
-                VALUES (?, ?, ?, ?, ?, ?)
+                VALUES (%s, %s, %s, %s, %s, %s)
+
             '''
             values = (
                 analysis_data.get('location_id'),
@@ -73,9 +77,11 @@ class PotholeAnalysis:
                 analysis_data.get('average_width_cm'),
                 analysis_data.get('average_depth_cm')
             )
-            cursor.execute(query, values)
+            cursor.execute(query + " RETURNING analysis_id", values)
+            analysis_id = cursor.fetchone()[0]
             db.get_connection().commit()
-            return cursor.lastrowid
+            return analysis_id
+
         except Exception as e:
             print(f"❌ Pothole analysis creation failed: {e}")
             db.get_connection().rollback()
@@ -91,7 +97,7 @@ class PotholeDetails:
             query = '''
                 INSERT INTO pothole_details (analysis_id, pothole_number, width_cm, 
                                            depth_cm, volume_liters, confidence_score, bounding_box)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
+                VALUES (%s, %s, %s, %s, %s, %s, %s)
             '''
             values = []
             for pothole in potholes_data:
@@ -124,7 +130,8 @@ class CostAnalysis:
                 INSERT INTO cost_analysis (analysis_id, material_cost, labor_cost, 
                                          equipment_cost, transport_cost, overhead_cost, 
                                          total_cost, cost_parameters)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+
             '''
             values = (
                 cost_data.get('analysis_id'),
@@ -154,7 +161,8 @@ class TimeEstimation:
             query = '''
                 INSERT INTO time_estimation (analysis_id, total_hours, setup_time, 
                                            prep_time, fill_time, compact_time, cleanup_time)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
+                VALUES (%s, %s, %s, %s, %s, %s, %s)
+
             '''
             values = (
                 time_data.get('analysis_id'),

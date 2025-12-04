@@ -1,25 +1,24 @@
-# Use Python 3.12 → stable for PyTorch
-FROM python:3.12-slim
+FROM python:3.10-slim
 
-ENV DEBIAN_FRONTEND=noninteractive
-
-RUN apt-get update && apt-get install -y \
-    ffmpeg \
-    libsm6 \
-    libxext6 \
-    && rm -rf /var/lib/apt/lists/*
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
 
 WORKDIR /app
 
+RUN apt-get update && apt-get install -y \
+    libgl1 \
+    libglib2.0-0 \
+    build-essential \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
 COPY requirements.txt .
-
-# Prevent numpy 2.x problems
-RUN pip install --no-cache-dir "numpy<2.0"
-
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --upgrade pip && \
+    pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu && \
+    pip install -r requirements.txt
 
 COPY . .
 
 EXPOSE 8000
 
-CMD ["gunicorn", "--bind", "0.0.0.0:8000", "app:app"]
+CMD ["sh", "-c", "gunicorn -b 0.0.0.0:$PORT app:app"]

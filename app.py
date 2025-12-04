@@ -18,6 +18,7 @@ from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, 
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib import colors
 from reportlab.lib.units import inch
+db.get_connection()
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'pothole-detection-secret-key')
@@ -242,7 +243,9 @@ def process_image(image_path, material_cost, labor_cost, team_size, overhead, lo
         # Update media processed URL in DB
         cursor = db.get_cursor()
         try:
-            cursor.execute("UPDATE media_files SET processed_file_url = ? WHERE media_id = ?", (annotated_result['url'], media_id))
+            cursor.execute("UPDATE media_files SET processed_file_url = %s WHERE media_id = %s", 
+              (annotated_result['url'], media_id))
+
             db.get_connection().commit()
         finally:
             cursor.close()
@@ -350,7 +353,7 @@ def process_video(video_path, material_cost, labor_cost, team_size, overhead, lo
                     result_image_url = annotated_result['url']
                     cursor = db.get_cursor()
                     try:
-                        cursor.execute("UPDATE media_files SET processed_file_url = ? WHERE media_id = ?", (annotated_result['url'], media_id))
+                        cursor.execute("UPDATE media_files SET processed_file_url = %s WHERE media_id = %s", (annotated_result['url'], media_id))
                         db.get_connection().commit()
                     finally:
                         cursor.close()

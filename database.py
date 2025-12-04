@@ -1,50 +1,57 @@
-import sqlite3
+import psycopg2
 import os
 import threading
 from dotenv import load_dotenv
-
+load_dotenv()
 
 class Database:
     def __init__(self):
-        self.db_path = '/tmp/pothole_detection.db'
+        self.db_name = os.getenv("DB_NAME")
+        self.db_user = os.getenv("DB_USER")
+        self.db_password = os.getenv("DB_PASSWORD")
+        self.db_host = os.getenv("DB_HOST", "localhost")
+        self.db_port = os.getenv("DB_PORT", "5432")
 
         self.thread_local = threading.local()
-        
+
+        # Debug print
+        print("✅ DB CONFIGURATION")
+        print("DB:", self.db_name, self.db_user, self.db_host, self.db_port)
+
     def get_connection(self):
-        """Get thread-specific database connection"""
         if not hasattr(self.thread_local, 'connection'):
-            self.thread_local.connection = sqlite3.connect(self.db_path)
-            self.thread_local.connection.row_factory = sqlite3.Row
-            # Enable foreign keys
-            self.thread_local.connection.execute("PRAGMA foreign_keys = ON")
+            self.thread_local.connection = psycopg2.connect(
+                dbname=self.db_name,
+                user=self.db_user,
+                password=self.db_password,
+                host=self.db_host,
+                port=self.db_port
+            )
             self.create_tables()
         return self.thread_local.connection
-    
+
     def connect(self):
-        """Maintain compatibility with existing code"""
         return self.get_connection()
-    
+
     def create_tables(self):
         conn = self.get_connection()
-        cursor = conn.cursor()
-        
-        # Locations Table
-        cursor.execute('''
+        cur = conn.cursor()
+
+        cur.execute("""
             CREATE TABLE IF NOT EXISTS locations (
-                location_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                location_id SERIAL PRIMARY KEY,
                 location_name TEXT NOT NULL,
-                latitude REAL,
-                longitude REAL,
+                latitude FLOAT,
+                longitude FLOAT,
                 city TEXT,
                 additional_notes TEXT,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
-        ''')
-        
-        # Media Files Table
-        cursor.execute('''
+        """)
+
+        cur.execute("""
             CREATE TABLE IF NOT EXISTS media_files (
-                media_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                media_id SERIAL PRIMARY KEY,
                 original_filename TEXT NOT NULL,
                 file_type TEXT NOT NULL,
                 original_file_url TEXT,
@@ -52,84 +59,71 @@ class Database:
                 file_size INTEGER,
                 upload_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
-        ''')
-        
-        # Pothole Analysis Table
-        cursor.execute('''
+        """)
+
+        cur.execute("""
             CREATE TABLE IF NOT EXISTS pothole_analysis (
-                analysis_id INTEGER PRIMARY KEY AUTOINCREMENT,
-                location_id INTEGER,
-                media_id INTEGER,
+                analysis_id SERIAL PRIMARY KEY,
+                location_id INTEGER REFERENCES locations(location_id),
+                media_id INTEGER REFERENCES media_files(media_id),
                 total_potholes INTEGER NOT NULL,
-                total_volume_liters REAL,
-                average_width_cm REAL,
-                average_depth_cm REAL,
-                analysis_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY (location_id) REFERENCES locations (location_id),
-                FOREIGN KEY (media_id) REFERENCES media_files (media_id)
+                total_volume_liters FLOAT,
+                average_width_cm FLOAT,
+                average_depth_cm FLOAT,
+                analysis_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
-        ''')
-        
-        # Pothole Details Table
-        cursor.execute('''
+        """)
+
+        cur.execute("""
             CREATE TABLE IF NOT EXISTS pothole_details (
-                pothole_detail_id INTEGER PRIMARY KEY AUTOINCREMENT,
-                analysis_id INTEGER,
+                pothole_detail_id SERIAL PRIMARY KEY,
+                analysis_id INTEGER REFERENCES pothole_analysis(analysis_id),
                 pothole_number INTEGER,
-                width_cm REAL,
-                depth_cm REAL,
-                volume_liters REAL,
-                confidence_score REAL,
-                bounding_box TEXT,
-                FOREIGN KEY (analysis_id) REFERENCES pothole_analysis (analysis_id)
+                width_cm FLOAT,
+                depth_cm FLOAT,
+                volume_liters FLOAT,
+                confidence_score FLOAT,
+                bounding_box TEXT
             )
-        ''')
-        
-        # Cost Analysis Table
-        cursor.execute('''
+        """)
+
+        cur.execute("""
             CREATE TABLE IF NOT EXISTS cost_analysis (
-                cost_id INTEGER PRIMARY KEY AUTOINCREMENT,
-                analysis_id INTEGER,
-                material_cost REAL,
-                labor_cost REAL,
-                equipment_cost REAL,
-                transport_cost REAL,
-                overhead_cost REAL,
-                total_cost REAL,
-                cost_parameters TEXT,
-                FOREIGN KEY (analysis_id) REFERENCES pothole_analysis (analysis_id)
+                cost_id SERIAL PRIMARY KEY,
+                analysis_id INTEGER REFERENCES pothole_analysis(analysis_id),
+                material_cost FLOAT,
+                labor_cost FLOAT,
+                equipment_cost FLOAT,
+                transport_cost FLOAT,
+                overhead_cost FLOAT,
+                total_cost FLOAT,
+                cost_parameters TEXT
             )
-        ''')
-        
-        # Time Estimation Table
-        cursor.execute('''
+        """)
+
+        cur.execute("""
             CREATE TABLE IF NOT EXISTS time_estimation (
-                time_id INTEGER PRIMARY KEY AUTOINCREMENT,
-                analysis_id INTEGER,
-                total_hours REAL,
-                setup_time REAL,
-                prep_time REAL,
-                fill_time REAL,
-                compact_time REAL,
-                cleanup_time REAL,
-                FOREIGN KEY (analysis_id) REFERENCES pothole_analysis (analysis_id)
+                time_id SERIAL PRIMARY KEY,
+                analysis_id INTEGER REFERENCES pothole_analysis(analysis_id),
+                total_hours FLOAT,
+                setup_time FLOAT,
+                prep_time FLOAT,
+                fill_time FLOAT,
+                compact_time FLOAT,
+                cleanup_time FLOAT
             )
-        ''')
-        
+        """)
+
         conn.commit()
-        print("✅ Database tables created/verified successfully")
-    
+        print("✅ PostgreSQL tables created")
+
     def get_cursor(self):
-        """Get cursor from thread-specific connection"""
-        conn = self.get_connection()
-        return conn.cursor()
-    
+        return self.get_connection().cursor()
+
     def close(self):
-        """Close thread-specific connection"""
         if hasattr(self.thread_local, 'connection'):
             self.thread_local.connection.close()
             del self.thread_local.connection
-            print("✅ Database connection closed")
+            print("✅ PostgreSQL connection closed")
 
-# Initialize database
 db = Database()
