@@ -6,11 +6,19 @@ load_dotenv()
 
 class Database:
     def __init__(self):
-        self.db_name = os.getenv("DB_NAME")
-        self.db_user = os.getenv("DB_USER")
-        self.db_password = os.getenv("DB_PASSWORD")
-        self.db_host = os.getenv("DB_HOST", "localhost")
-        self.db_port = os.getenv("DB_PORT", "5432")
+        self.database_url = os.getenv("DATABASE_URL")
+
+        if self.database_url:
+            self.conn_params = self.database_url
+        else:
+             self.conn_params = {
+             "dbname": os.getenv("DB_NAME"),
+             "user": os.getenv("DB_USER"),
+             "password": os.getenv("DB_PASSWORD"),
+             "host": os.getenv("DB_HOST"),
+             "port": os.getenv("DB_PORT"),
+         }
+
 
         self.thread_local = threading.local()
 
@@ -19,16 +27,11 @@ class Database:
         print("DB:", self.db_name, self.db_user, self.db_host, self.db_port)
 
     def get_connection(self):
-        if not hasattr(self.thread_local, 'connection'):
-            self.thread_local.connection = psycopg2.connect(
-                dbname=self.db_name,
-                user=self.db_user,
-                password=self.db_password,
-                host=self.db_host,
-                port=self.db_port
-            )
-            self.create_tables()
-        return self.thread_local.connection
+        if self.database_url:
+            self.thread_local.connection = psycopg2.connect(self.database_url)
+        else:
+            self.thread_local.connection = psycopg2.connect(**self.conn_params)
+
 
     def connect(self):
         return self.get_connection()
