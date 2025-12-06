@@ -12,14 +12,16 @@ class Database:
 
         print("✅ DATABASE_URL:", self.database_url)
 
+        if not self.database_url:
+            raise RuntimeError("❌ DATABASE_URL is missing")
+
     def get_connection(self):
         if not hasattr(self.thread_local, 'connection'):
             self.thread_local.connection = psycopg2.connect(self.database_url)
-            self.create_tables()
+            self.create_tables(self.thread_local.connection)   # ✅ pass existing connection
         return self.thread_local.connection
 
-    def create_tables(self):
-        conn = self.get_connection()
+    def create_tables(self, conn):    # ✅ receive connection
         cur = conn.cursor()
 
         cur.execute("""
