@@ -9,7 +9,7 @@ class Database:
         self.db_name = os.getenv("DB_NAME")
         self.db_user = os.getenv("DB_USER")
         self.db_password = os.getenv("DB_PASSWORD")
-        self.db_host = os.getenv("DB_HOST", "localhost")
+        self.db_host = os.getenv("DB_HOST")     # ❗ FIXED
         self.db_port = os.getenv("DB_PORT", "5432")
 
         self.thread_local = threading.local()
