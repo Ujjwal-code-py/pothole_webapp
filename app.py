@@ -615,8 +615,13 @@ def get_history():
 @app.teardown_appcontext
 def close_db(error):
     db.close()
+@app.errorhandler(Exception)
+def handle_error(e):
+    import traceback
+    return f"<pre>{traceback.format_exc()}</pre>", 500
 
 if __name__ == '__main__':
+    
     # Ensure uploads/results directories exist locally (not required when using Cloudinary)
     os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
     os.makedirs(app.config['RESULTS_FOLDER'], exist_ok=True)
