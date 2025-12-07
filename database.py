@@ -17,11 +17,12 @@ class Database:
 
     def get_connection(self):
         if not hasattr(self.thread_local, 'connection'):
-            self.thread_local.connection = psycopg2.connect(self.database_url)
-            self.create_tables(self.thread_local.connection)   # ✅ pass existing connection
+            # ✅ Railway PostgreSQL requires SSL
+            self.thread_local.connection = psycopg2.connect(self.database_url + "?sslmode=require")
+            self.create_tables(self.thread_local.connection)
         return self.thread_local.connection
 
-    def create_tables(self, conn):    # ✅ receive connection
+    def create_tables(self, conn):
         cur = conn.cursor()
 
         cur.execute("""
@@ -103,5 +104,13 @@ class Database:
 
         conn.commit()
         print("✅ PostgreSQL tables created")
+
+    def get_cursor(self):
+        return self.get_connection().cursor()
+
+    def close(self):
+        if hasattr(self.thread_local, 'connection'):
+            self.thread_local.connection.close()
+            del self.thread_local.connection
 
 db = Database()
